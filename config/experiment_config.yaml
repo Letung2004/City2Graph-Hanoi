@@ -1,0 +1,146 @@
+# ==============================================================================
+# CITY2GRAPH-HANOI: THỰC NGHIỆM MÔ HÌNH HÓA ĐỒ THỊ DỊ THỂ & HỌC SÂU KHÔNG GIAN thủ đô Hà Nội
+# ==============================================================================
+
+project:
+  name: "City2Graph-Hanoi"
+  study_area: "Hanoi Central Urban Area"
+  crs: "EPSG:32648" # UTM Zone 48N
+  spatial_unit: "Uber H3 Resolution 9" # Cạnh ~174m, diện tích ~0.115 km2
+  num_nodes: 985 # Tổng số ô lục giác nghiên cứu
+
+# ------------------------------------------------------------------------------
+# 1. Hạt giống ngẫu nhiên (Cố định tính xác định theo Cell 5)
+# ------------------------------------------------------------------------------
+seeds:
+  global: 42
+  torch: 42
+  numpy: 42
+  tsne: 42
+  kmeans: 42
+
+# ------------------------------------------------------------------------------
+# 2. Cấu hình đường dẫn dữ liệu (Tương thích thư mục gốc dự án)
+# ------------------------------------------------------------------------------
+data:
+  raw_dir: "data/raw/hanoi"
+  processed_dir: "data/processed/hanoi"
+  output_dir: "data/outputs/hanoi"
+
+  # Dữ liệu nguồn sơ cấp
+  zones_path: "data/raw/hanoi/zones/hanoi_zones.parquet"
+  pois_raw_path: "data/raw/hanoi/overture/hanoi_pois.parquet"
+  road_segments_path: "data/raw/hanoi/overture/hanoi_segments.parquet"
+  road_connectors_path: "data/raw/hanoi/overture/hanoi_connectors.parquet"
+  gtfs_zip_path: "data/raw/hanoi/gtfs/hanoi_bus_gtfs.zip"
+
+  # Dữ liệu thuộc tính & mạng lưới sau tiền xử lý
+  features_gpkg: "data/processed/hanoi/features/oa_with_features.gpkg"
+  normalized_features_path: "data/processed/hanoi/features/hanoi_normalized_features.parquet"
+  scaling_params_path: "data/processed/hanoi/graphs/oa_feature_scaling.json"
+  street_nodes_path: "data/processed/hanoi/features/street_nodes.gpkg"
+  street_edges_path: "data/processed/hanoi/features/street_edges.gpkg"
+  transit_nodes_path: "data/processed/hanoi/features/travel_summary_nodes.gpkg"
+  transit_edges_path: "data/processed/hanoi/features/travel_summary_edges.gpkg"
+
+  # Đồ thị PyG lưu trữ (Phục vụ Notebook 03)
+  homo_graph_path: "data/processed/hanoi/graphs/homo.pt"
+  hetero_walk_path: "data/processed/hanoi/graphs/hetero_walk.pt"
+  hetero_multi_path: "data/processed/hanoi/graphs/hetero_multi.pt"
+  hetero_data_path: "data/processed/hanoi/graphs/hanoi_hetero_data.pt"
+
+  # Thư mục xuất sản phẩm (Notebook 03, 04, 05)
+  checkpoints_dir: "data/outputs/hanoi/checkpoints"
+  embeddings_dir: "data/outputs/hanoi/embeddings"
+  clusters_dir: "data/outputs/hanoi/clusters"
+  figures_dir: "data/outputs/hanoi/figures"
+  tables_dir: "data/outputs/hanoi/tables"
+
+# ------------------------------------------------------------------------------
+# 3. Đặc trưng nút & Chuẩn hóa phi tuyến (Equation 1 & Table A.1)
+# ------------------------------------------------------------------------------
+features:
+  num_features: 16 # 16 nhóm tiện ích tầng trệt POIs
+  scaling_method: "log1p+zscore"
+  columns:
+    - "arts_culture"
+    - "automotive_facility"
+    - "consumer_service"
+    - "corporate_service"
+    - "education"
+    - "entertainment"
+    - "food_beverage"
+    - "healthcare"
+    - "hotel_lodging"
+    - "industrial_service"
+    - "park"
+    - "public_service"
+    - "religion"
+    - "retail"
+    - "sports_fitness"
+    - "transportation_facility"
+
+# ------------------------------------------------------------------------------
+# 4. Tham số xây dựng mạng lưới không gian & Metapaths
+# ------------------------------------------------------------------------------
+mobility:
+  walking_speed_mps: 1.3333 # Vận tốc đi bộ v = 4.8 km/h
+  cutoff_time_sec: 900.0 # Ngưỡng thời gian tiếp cận T <= 15 phút (900s)
+  knn_k: 1 # Số láng giềng k-NN nối ô H3 vào nút đường bộ
+
+# ------------------------------------------------------------------------------
+# 5. Kiến trúc mạng GNN & Bộ giải mã (GAT-GAE & HAN-GAE)
+# ------------------------------------------------------------------------------
+model:
+  num_layers: 2 # L = 2 hops (chống oversmoothing)
+  num_heads: 4 # Số attention heads
+  hidden_dim: 64 # Chiều biểu diễn ẩn
+  embedding_dim: 32 # Kích thước vector nhúng tiềm ẩn Z (d = 32)
+  dropout: 0.6 # Tỷ lệ dropout chuẩn hóa GAT/HAN
+
+  # Cấu hình hàm mất mát liên hợp (Joint Reconstruction Loss)
+  loss:
+    feature_loss_type: "smooth_l1" # Tái tạo thuộc tính nút (Attribute Decoder)
+    struct_loss_type: "distmult" # Tái tạo cạnh đồ thị (Structure Decoder)
+    alpha: 0.5 # Trọng số cân bằng: L = alpha * L_feat + (1 - alpha) * L_struct
+
+# ------------------------------------------------------------------------------
+# 6. Quy trình huấn luyện mô hình (Notebook 03)
+# ------------------------------------------------------------------------------
+training:
+  device: "cpu" # Chạy trực tiếp trên CPU R7 6800H
+  epochs: 200 # Số epochs tối đa
+  lr: 0.001 # Tốc độ học (Adam Optimizer)
+  weight_decay: 0.0001 # Trọng số suy giảm L2 regularization
+  early_stopping:
+    enabled: true
+    patience: 100 # Ngắt sớm nếu loss không giảm sau 100 epochs
+    min_delta: 0.0001
+  smoke_test:
+    epochs: 5
+    repeats: 2
+
+# ------------------------------------------------------------------------------
+# 7. Đánh giá phân cụm, t-SNE & Vùng ảnh hưởng (Notebook 04 & Appendix)
+# ------------------------------------------------------------------------------
+evaluation:
+  # Tọa độ trung tâm thương mại / lịch sử CBD (Hồ Hoàn Kiếm)
+  cbd:
+    name: "Hoan Kiem Lake"
+    lat: 21.0285
+    lon: 105.8542
+
+  kmeans:
+    k_min: 2
+    k_max: 50
+    n_init: 20
+
+  hdbscan:
+    mcs_min: 5
+    mcs_max: 30
+    cache_dir: "./tmp/hdbscan_cache"
+
+  tsne:
+    perplexity: 30
+    n_iter: 1000
+    random_state: 42

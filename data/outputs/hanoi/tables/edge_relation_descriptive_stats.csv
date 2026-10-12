@@ -1,0 +1,6 @@
+edge_type,count,min,mean,max,std
+"('street_connector', 'is_connected_to', 'street_connector')",67748,0.01,28.54,1682.59,36.09
+"('bus_station', 'is_next_to', 'bus_station')",2299,2.0,126.14,811.0,63.86
+"('oa', 'contig', 'oa')",5550,269.49,273.32,277.58,3.25
+"('oa', '15_min_walk', 'oa')",31040,269.49,629.25,832.75,206.1
+"('oa', '15_min_multi', 'oa')",4898,808.5,820.05,832.75,9.77

@@ -1,0 +1,11 @@
+Metric,Calinski-Harabasz,Davies-Bouldin
+Statistic,Mean ± SD,Mean ± SD
+Baseline (PCA),360.81 ± 331.95,1.73 ± 0.19
+Model 1 (GAT-GAE),515.57 ± 264.19,1.28 ± 0.09
+Model 2 (HAN-GAE: Walk),801.95 ± 60.57,0.90 ± 0.08
+Model 3 (HAN-GAE: Multi),691.84 ± 80.40,1.00 ± 0.06
+Model 4 (HAN-GAE: All),702.73 ± 58.70,0.87 ± 0.10
+Model 1S (GAT-GAE: Struct),5426.41 ± 1655.46,0.68 ± 0.10
+Model 2S (HAN-GAE: Walk-S),60.57 ± 24.48,1.82 ± 0.23
+Model 3S (HAN-GAE: Multi-S),29.55 ± 16.11,2.46 ± 0.22
+Model 4S (HAN-GAE: All-S),35.81 ± 18.50,2.36 ± 0.18

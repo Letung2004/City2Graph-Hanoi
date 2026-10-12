@@ -1,0 +1,119 @@
+# ==============================================================================
+# CITY2GRAPH-HANOI: GITIGNORE CONFIGURATION
+# Mục đích: Loại trừ các tệp tạm, cache, môi trường ảo và tệp vượt hạn mức GitHub
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Các tệp dữ liệu vượt ngưỡng 100MB của GitHub
+# ------------------------------------------------------------------------------
+# street_edges.gpkg có dung lượng ~110.5MB (vượt trần 100MB đẩy qua standard push)
+data/processed/hanoi/features/street_edges.gpkg
+**/street_edges.gpkg
+
+# Đề phòng các file nén dữ liệu thô lớn nếu tải về cục bộ
+*.tar.gz
+*.zip
+*.7z
+
+# ------------------------------------------------------------------------------
+# 2. Byte-compiled / Python runtime artifacts
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+*.dll
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------------------------------------------------------
+# 3. Virtual Environments (Conda / venv)
+# ------------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+c2g_cpu/
+env.bak/
+
+# ------------------------------------------------------------------------------
+# 4. IDE & Code Editors & OS Artifacts
+# ------------------------------------------------------------------------------
+# Visual Studio Code (giữ lại cấu hình workspace chung)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains (PyCharm / IntelliJ IDEA)
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Hệ điều hành (macOS / Windows)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ------------------------------------------------------------------------------
+# 5. Jupyter Notebook Checkpoints
+# ------------------------------------------------------------------------------
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+.virtual_documents/
+
+# ------------------------------------------------------------------------------
+# 6. Cache tạm thời, Boruvka HDBSCAN & Thư mục rác
+# ------------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.state
+*.geojson.state
+*_trash_backup/
+data/_trash_backup/
+data/processed/hanoi/outputs/
+
+# ------------------------------------------------------------------------------
+# 7. Logs, Testing & Profiler
+# ------------------------------------------------------------------------------
+*.log
+logs/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# 8. Whitelist kết quả nghiên cứu (Bảo đảm không bị loại trừ ngoài ý muốn)
+# ------------------------------------------------------------------------------
+!data/outputs/hanoi/tables/*.csv
+!data/outputs/hanoi/figures/*.png
+!data/outputs/hanoi/figures/*.jpg
+!data/outputs/hanoi/figures/*.pdf
+!data/outputs/hanoi/checkpoints/
+!data/outputs/hanoi/checkpoints/*.pt
+!data/outputs/hanoi/checkpoints/*.pth

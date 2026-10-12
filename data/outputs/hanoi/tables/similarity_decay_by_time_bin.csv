@@ -1,0 +1,127 @@
+Model,Mode,time_bin,similarity
+Baseline (PCA),Multimodal (streets + bus transits),0-5,0.8145791
+Baseline (PCA),Multimodal (streets + bus transits),5-10,0.68891436
+Baseline (PCA),Multimodal (streets + bus transits),10-15,0.4864316
+Baseline (PCA),Multimodal (streets + bus transits),15-20,0.34260023
+Baseline (PCA),Multimodal (streets + bus transits),20-25,0.2394868
+Baseline (PCA),Multimodal (streets + bus transits),25-30,-0.087748855
+Baseline (PCA),Multimodal (streets + bus transits),>30,-0.43855
+Baseline (PCA),Walk-based (streets),0-5,0.8145791
+Baseline (PCA),Walk-based (streets),5-10,0.8219282
+Baseline (PCA),Walk-based (streets),10-15,0.6734583
+Baseline (PCA),Walk-based (streets),15-20,0.598682
+Baseline (PCA),Walk-based (streets),20-25,0.5519269
+Baseline (PCA),Walk-based (streets),25-30,0.43082944
+Baseline (PCA),Walk-based (streets),>30,-0.13928407
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),0-5,0.9918785
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),5-10,0.9200095
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),10-15,0.7852467
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),15-20,0.6274674
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),20-25,0.4885079
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),25-30,0.27601162
+Model 1 (GAT-GAE),Multimodal (streets + bus transits),>30,0.0129851485
+Model 1 (GAT-GAE),Walk-based (streets),0-5,0.9918785
+Model 1 (GAT-GAE),Walk-based (streets),5-10,0.96838605
+Model 1 (GAT-GAE),Walk-based (streets),10-15,0.93091434
+Model 1 (GAT-GAE),Walk-based (streets),15-20,0.88387656
+Model 1 (GAT-GAE),Walk-based (streets),20-25,0.83586675
+Model 1 (GAT-GAE),Walk-based (streets),25-30,0.7741214
+Model 1 (GAT-GAE),Walk-based (streets),>30,0.23556754
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),0-5,0.9965277
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),5-10,0.81315994
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),10-15,0.2799449
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),15-20,0.26541725
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),20-25,0.49500376
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),25-30,0.33541635
+Model 1S (GAT-GAE: Struct),Multimodal (streets + bus transits),>30,0.6160248
+Model 1S (GAT-GAE: Struct),Walk-based (streets),0-5,0.9965277
+Model 1S (GAT-GAE: Struct),Walk-based (streets),5-10,0.97014123
+Model 1S (GAT-GAE: Struct),Walk-based (streets),10-15,0.8794716
+Model 1S (GAT-GAE: Struct),Walk-based (streets),15-20,0.7234968
+Model 1S (GAT-GAE: Struct),Walk-based (streets),20-25,0.487702
+Model 1S (GAT-GAE: Struct),Walk-based (streets),25-30,0.31771365
+Model 1S (GAT-GAE: Struct),Walk-based (streets),>30,0.4810342
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),0-5,0.9995717
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),5-10,0.98666525
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),10-15,0.89277345
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),15-20,0.6877363
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),20-25,0.5536175
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),25-30,0.4290548
+Model 2 (HAN-GAE: Walk),Multimodal (streets + bus transits),>30,0.35858518
+Model 2 (HAN-GAE: Walk),Walk-based (streets),0-5,0.9995717
+Model 2 (HAN-GAE: Walk),Walk-based (streets),5-10,0.9977664
+Model 2 (HAN-GAE: Walk),Walk-based (streets),10-15,0.9904315
+Model 2 (HAN-GAE: Walk),Walk-based (streets),15-20,0.9782937
+Model 2 (HAN-GAE: Walk),Walk-based (streets),20-25,0.95255125
+Model 2 (HAN-GAE: Walk),Walk-based (streets),25-30,0.8997244
+Model 2 (HAN-GAE: Walk),Walk-based (streets),>30,0.45364398
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),0-5,0.9999906
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),5-10,0.9999606
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),10-15,0.9999377
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),15-20,0.9999434
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),20-25,0.9999381
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),25-30,0.9999361
+Model 2S (HAN-GAE: Walk-S),Multimodal (streets + bus transits),>30,0.99993026
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),0-5,0.9999906
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),5-10,0.99997824
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),10-15,0.9999612
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),15-20,0.9999502
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),20-25,0.9999416
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),25-30,0.9999315
+Model 2S (HAN-GAE: Walk-S),Walk-based (streets),>30,0.9999346
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),0-5,0.9972563
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),5-10,0.9884045
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),10-15,0.9141213
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),15-20,0.67289704
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),20-25,0.47384307
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),25-30,0.3492678
+Model 3 (HAN-GAE: Multi),Multimodal (streets + bus transits),>30,0.2713905
+Model 3 (HAN-GAE: Multi),Walk-based (streets),0-5,0.9972563
+Model 3 (HAN-GAE: Multi),Walk-based (streets),5-10,0.99686205
+Model 3 (HAN-GAE: Multi),Walk-based (streets),10-15,0.9921428
+Model 3 (HAN-GAE: Multi),Walk-based (streets),15-20,0.9830334
+Model 3 (HAN-GAE: Multi),Walk-based (streets),20-25,0.9656511
+Model 3 (HAN-GAE: Multi),Walk-based (streets),25-30,0.92300546
+Model 3 (HAN-GAE: Multi),Walk-based (streets),>30,0.3797115
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),0-5,0.99958974
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),5-10,0.9992201
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),10-15,0.9991566
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),15-20,0.9992644
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),20-25,0.9991524
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),25-30,0.9991991
+Model 3S (HAN-GAE: Multi-S),Multimodal (streets + bus transits),>30,0.999079
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),0-5,0.99958974
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),5-10,0.9993097
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),10-15,0.99922407
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),15-20,0.99915814
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),20-25,0.9991321
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),25-30,0.9991376
+Model 3S (HAN-GAE: Multi-S),Walk-based (streets),>30,0.9991414
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),0-5,0.9990301
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),5-10,0.9848853
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),10-15,0.88563854
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),15-20,0.6885335
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),20-25,0.58304965
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),25-30,0.5115382
+Model 4 (HAN-GAE: All),Multimodal (streets + bus transits),>30,0.5106279
+Model 4 (HAN-GAE: All),Walk-based (streets),0-5,0.9990301
+Model 4 (HAN-GAE: All),Walk-based (streets),5-10,0.9970521
+Model 4 (HAN-GAE: All),Walk-based (streets),10-15,0.9886956
+Model 4 (HAN-GAE: All),Walk-based (streets),15-20,0.9744942
+Model 4 (HAN-GAE: All),Walk-based (streets),20-25,0.94511247
+Model 4 (HAN-GAE: All),Walk-based (streets),25-30,0.88750213
+Model 4 (HAN-GAE: All),Walk-based (streets),>30,0.5496736
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),0-5,0.99991107
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),5-10,0.9998417
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),10-15,0.9998064
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),15-20,0.9998198
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),20-25,0.9998097
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),25-30,0.9998118
+Model 4S (HAN-GAE: All-S),Multimodal (streets + bus transits),>30,0.9997746
+Model 4S (HAN-GAE: All-S),Walk-based (streets),0-5,0.99991107
+Model 4S (HAN-GAE: All-S),Walk-based (streets),5-10,0.9998642
+Model 4S (HAN-GAE: All-S),Walk-based (streets),10-15,0.99983245
+Model 4S (HAN-GAE: All-S),Walk-based (streets),15-20,0.99983174
+Model 4S (HAN-GAE: All-S),Walk-based (streets),20-25,0.999831
+Model 4S (HAN-GAE: All-S),Walk-based (streets),25-30,0.9997927
+Model 4S (HAN-GAE: All-S),Walk-based (streets),>30,0.9997945
