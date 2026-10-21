@@ -1,5 +1,5 @@
 # ==============================================================================
-# CITY2GRAPH-HANOI: THỰC NGHIỆM MÔ HÌNH HÓA ĐỒ THỊ DỊ THỂ & HỌC SÂU KHÔNG GIAN thủ đô Hà Nội
+# CITY2GRAPH-HANOI: THỰC NGHIỆM MÔ HÌNH HÓA ĐỒ THỊ DỊ THỂ & HỌC SÂU KHÔNG GIAN THỦ ĐÔ HÀ NỘI
 # ==============================================================================
 
 project:
@@ -14,6 +14,7 @@ project:
 # ------------------------------------------------------------------------------
 seeds:
   global: 42
+  model: 42 # Khóa đọc bởi 03_model_training_hanoi.py
   torch: 42
   numpy: 42
   tsne: 42
@@ -92,9 +93,12 @@ mobility:
 # 5. Kiến trúc mạng GNN & Bộ giải mã (GAT-GAE & HAN-GAE)
 # ------------------------------------------------------------------------------
 model:
+  in_dim: 16 # Khóa đọc bởi 03_model_training_hanoi.py
   num_layers: 2 # L = 2 hops (chống oversmoothing)
-  num_heads: 4 # Số attention heads
-  hidden_dim: 64 # Chiều biểu diễn ẩn
+  heads: 4 # Khóa đọc bởi 03_model_training_hanoi.py
+  num_heads: 4 # Đồng bộ tên tài liệu
+  hidden_dim: 64 # Chiều biểu diễn ẩn (4 heads x 16)
+  out_dim: 32 # Khóa đọc bởi 03_model_training_hanoi.py
   embedding_dim: 32 # Kích thước vector nhúng tiềm ẩn Z (d = 32)
   dropout: 0.6 # Tỷ lệ dropout chuẩn hóa GAT/HAN
 
@@ -102,7 +106,7 @@ model:
   loss:
     feature_loss_type: "smooth_l1" # Tái tạo thuộc tính nút (Attribute Decoder)
     struct_loss_type: "distmult" # Tái tạo cạnh đồ thị (Structure Decoder)
-    alpha: 0.5 # Trọng số cân bằng: L = alpha * L_feat + (1 - alpha) * L_struct
+    alpha: 0.5 # Trọng số cân bằng
 
 # ------------------------------------------------------------------------------
 # 6. Quy trình huấn luyện mô hình (Notebook 03)
@@ -110,7 +114,7 @@ model:
 training:
   device: "cpu" # Chạy trực tiếp trên CPU R7 6800H
   epochs: 200 # Số epochs tối đa
-  lr: 0.001 # Tốc độ học (Adam Optimizer)
+  lr: 0.005 # Tốc độ học chuẩn Sato et al. (CEUS 2026)
   weight_decay: 0.0001 # Trọng số suy giảm L2 regularization
   early_stopping:
     enabled: true
@@ -133,7 +137,7 @@ evaluation:
   kmeans:
     k_min: 2
     k_max: 50
-    n_init: 20
+    n_init: 10 # Số lần khởi tạo tâm cụm ngẫu nhiên
 
   hdbscan:
     mcs_min: 5

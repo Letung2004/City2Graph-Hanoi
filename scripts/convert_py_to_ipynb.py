@@ -9,7 +9,7 @@ Vị trí lưu: D:\DATN\City2Graph-Hanoi\scripts\convert_py_to_ipynb.py
 
 Cách sử dụng:
 1. Chuyển đổi một file cụ thể:
-   python scripts/convert_py_to_ipynb.py notebooks/hanoi/01_data_processing_hanoi.py
+   python scripts/convert_py_to_ipynb.py notebooks/hanoi/05_visualization_hanoi.py
 2. Chuyển đổi file với tên file xuất tùy chọn:
    python scripts/convert_py_to_ipynb.py file_input.py file_output.ipynb
 3. Chuyển đổi toàn bộ các file .py trong thư mục notebooks/hanoi/:
@@ -316,7 +316,7 @@ def main():
         if not project_files:
             print("! Không tự động dò thấy các file .py của đề tài trong notebooks/hanoi/.")
             print("  Vui lòng chỉ định đường dẫn cụ thể. Ví dụ:")
-            print("  python scripts/convert_py_to_ipynb.py notebooks/hanoi/01_data_processing_hanoi.py")
+            print("  python scripts/convert_py_to_ipynb.py notebooks/hanoi/05_visualization_hanoi.py")
             return
 
         print(f"\n-> Đang chuyển đổi danh sách {len(project_files)} tệp mã nguồn đề tài Hà Nội sang .ipynb:")

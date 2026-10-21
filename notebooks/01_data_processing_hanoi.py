@@ -698,6 +698,7 @@ plt.tight_layout()
 fig10b_path = OUTPUT_FIG_DIR / "16_poi_categories.png"
 plt.savefig(fig10b_path, dpi=200, bbox_inches='tight')
 print(f"✓ [Cell 10] Đã lưu ma trận 16 bản đồ POIs thành công tại: {fig10b_path}")
+plt.show()
 plt.close(fig)
 
 
@@ -804,6 +805,7 @@ plt.tight_layout()
 fig10a_path = OUTPUT_FIG_DIR / "hanoi_total_poi_density.png"
 plt.savefig(fig10a_path, dpi=200, bbox_inches='tight')
 print(f"✓ [Cell 13] Đã lưu bản đồ tổng mật độ tiện ích Figure 10a layout tại: {fig10a_path}")
+plt.show()
 plt.close(fig)
 
 
@@ -952,6 +954,7 @@ plt.subplots_adjust(top=0.88, bottom=0.06, left=0.04, right=0.96, wspace=0.10)
 centroids_fig_path = OUTPUT_FIG_DIR / "centroids_comparison.png"
 plt.savefig(centroids_fig_path, dpi=300, bbox_inches='tight')
 print(f"✓ [Cell 17] Đã lưu bản đồ đối sánh chuẩn mực Section 4.2 tại: {centroids_fig_path}")
+plt.show()
 plt.close(fig)
 
 
@@ -1238,6 +1241,7 @@ plt.tight_layout()
 fig9_path = OUTPUT_FIG_DIR / "hanoi_street_network.png"
 plt.savefig(fig9_path, facecolor='#0b0d10', dpi=200, bbox_inches='tight')
 print(f"✓ [Cell 24] Đã lưu bản đồ mạng đường bộ Figure 9 thành công tại: {fig9_path}")
+plt.show()
 plt.close(fig)
 
 
@@ -1476,6 +1480,7 @@ plt.tight_layout()
 fig_gtfs_path = OUTPUT_FIG_DIR / "hanoi_gtfs_travel_graph.png"
 plt.savefig(fig_gtfs_path, facecolor='#0b0d10', dpi=300, bbox_inches='tight')
 print(f"✓ [Cell 28] Đã lưu bản đồ đồ thị GTFS chuẩn xác tại: {fig_gtfs_path}")
+plt.show()
 plt.close(fig)
 
 

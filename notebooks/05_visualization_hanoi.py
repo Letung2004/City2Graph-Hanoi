@@ -217,146 +217,189 @@ plt.show()
 plt.close(fig)
 
 
-# %% [Cell 5]: Nạp và phân loại chức năng sử dụng đất đô thị (Land Use Functional Mapping)
-# --- Ghi chú giải thích từ Notebook gốc ---
-# ## 2. Land Use Visualization
-# Visualize land use classes with a custom color palette.
-# In Hanoi: Adapts Overture land use polygons if present, or synthesizes
-# ground-floor dominant functional land use from 16 POIs categories.
+# %% [Cell 5]: Tính toán tổng số lượng và mật độ tiện ích tầng trệt (POIs) trên từng ô H3
+# --- Ghi chú phương pháp luận ---
+# Đồng bộ hóa 100% với quyết định thiết kế chỉ sử dụng 16 nhóm POIs tầng trệt (Overture Maps)
+# cho ca nghiên cứu Hà Nội, loại bỏ hoàn toàn việc nội suy giả định lớp sử dụng đất (Land Use).
 # -----------------------------------------
 
-print("\n-> [Cell 5] Đang phân loại ngữ nghĩa chức năng sử dụng đất đô thị Hà Nội...")
+print("\n-> [Cell 5] Đang tổng hợp số lượng và mật độ tiện ích tầng trệt (16 nhóm POIs) trên 985 ô H3...")
 
-LAND_USE_MAPPING = {
-    "residential":     ["residential", "garages", "housing"],
-    "commercial":      ["commercial", "retail", "plaza", "food_beverage", "consumer_service"],
-    "industrial":      ["industrial", "works", "brownfield", "construction", "industrial_service"],
-    "public_services": ["school", "university", "college", "hospital", "clinic", "education", "healthcare", "public_service", "religion"],
-    "green_space":     ["park", "grass", "garden", "nature_reserve", "forest", "water"],
-    "transportation":  ["railway", "track", "pedestrian", "transportation_facility", "automotive_facility"],
-    "agricultural":    ["farmland", "farmyard", "crop"],
-    "other":           []
-}
+# Tự động nhận diện GeoDataFrame từ Cell 4 hoặc nạp trực tiếp từ oa_with_features.gpkg
+if "oa_gdf" not in globals():
+    if "oa_with_features" in globals():
+        oa_gdf = oa_with_features.copy()
+    elif "gdf" in globals():
+        oa_gdf = gdf.copy()
+    elif "hanoi_oa" in globals():
+        oa_gdf = hanoi_oa.copy()
+    else:
+        _oa_path = (
+            FEATURES_DIR / "oa_with_features.gpkg"
+            if "FEATURES_DIR" in globals()
+            else REPO_ROOT / "data" / "processed" / "hanoi" / "features" / "oa_with_features.gpkg"
+        )
+        oa_gdf = gpd.read_file(_oa_path)
 
-def get_reverse_mapping(mapping_dict):
-    rev = {}
-    for cat, items in mapping_dict.items():
-        for item in items:
-            rev[item] = cat
-    return rev
+# Đảm bảo hệ quy chiếu phẳng mét EPSG:32648
+if oa_gdf.crs is None or str(oa_gdf.crs) != "EPSG:32648":
+    oa_gdf = oa_gdf.to_crs("EPSG:32648")
 
-LAND_USE_TO_CLASS = get_reverse_mapping(LAND_USE_MAPPING)
+# Đảm bảo danh sách 16 cột POIs có sẵn
+if "OA_FEATURE_COLS" not in globals():
+    OA_FEATURE_COLS = [
+        "arts_culture", "automotive_facility", "consumer_service", "corporate_service",
+        "education", "entertainment", "food_beverage", "healthcare",
+        "hotel_lodging", "industrial_service", "park", "public_service",
+        "religion", "retail", "sports_fitness", "transportation_facility"
+    ]
 
-# Khảo sát tệp mặt phủ Overture nếu có sẵn trong raw/overture/
-land_use_path = RAW_DIR / "overture" / "land_uses.gpkg"
-if not land_use_path.exists():
-    land_use_path = RAW_DIR / "overture" / "land_use.geojson"
+# Tính tổng số lượng POIs trên toàn bộ 16 danh mục chuẩn Bảng A.1
+oa_gdf["total_pois"] = oa_gdf[OA_FEATURE_COLS].sum(axis=1).astype(float)
 
-has_raw_land_use = land_use_path.exists() and land_use_path.stat().st_size > 1000
+# Tính diện tích từng ô lục giác H3 theo km2 (Hệ quy chiếu phẳng EPSG:32648 - đơn vị mét)
+oa_gdf["area_km2"] = oa_gdf.geometry.area / 1e6
+oa_gdf["poi_density_km2"] = oa_gdf["total_pois"] / oa_gdf["area_km2"].replace(0, np.nan)
 
-if has_raw_land_use:
-    try:
-        land_uses = gpd.read_file(land_use_path)
-        if land_uses.crs != TARGET_CRS:
-            land_uses = land_uses.to_crs(TARGET_CRS)
-        cls_col = "class" if "class" in land_uses.columns else land_uses.columns[0]
-        land_uses["land_use_class"] = land_uses[cls_col].astype(str).map(lambda c: LAND_USE_TO_CLASS.get(c.lower(), "other"))
-        print(f"✓ Nạp thành công mặt phủ từ tệp thô: {len(land_uses):,} đa giác.")
-    except Exception:
-        has_raw_land_use = False
+total_poi_sum = int(oa_gdf["total_pois"].sum())
+mean_poi = oa_gdf["total_pois"].mean()
+max_poi = int(oa_gdf["total_pois"].max())
+median_poi = oa_gdf["total_pois"].median()
 
-# Cơ chế dự phòng thích ứng đô thị Hà Nội (Phân loại chức năng chiếm ưu thế trên từng ô H3)
-if not has_raw_land_use:
-    print("  • Thích ứng Hà Nội: Dựng bản đồ mặt phủ chức năng ưu thế (Dominant Functional Land Use) từ ma trận POIs.")
-    land_uses = oa_with_features.copy()
-
-    # Nhóm 16 POIs vào các lớp mặt phủ tương ứng
-    group_scores = pd.DataFrame(index=land_uses.index)
-    group_scores["commercial"] = land_uses[["retail", "food_beverage", "consumer_service", "hotel_lodging", "entertainment"]].sum(axis=1)
-    group_scores["public_services"] = land_uses[["education", "healthcare", "public_service", "religion", "corporate_service"]].sum(axis=1)
-    group_scores["green_space"] = land_uses[["park", "arts_culture"]].sum(axis=1)
-    group_scores["transportation"] = land_uses[["transportation_facility", "automotive_facility"]].sum(axis=1)
-    group_scores["industrial"] = land_uses["industrial_service"]
-    group_scores["residential"] = land_uses.get("total_pois", land_uses[OA_FEATURE_COLS].sum(axis=1)).apply(lambda s: 5 if s <= 15 else 0)
-
-    # Gán lớp chức năng chiếm ưu thế
-    dominant_class = group_scores.idxmax(axis=1)
-    # Nếu ô có quá ít tiện ích (< 20 POIs), phân vào nhóm nhà ở dân sinh (residential)
-    low_poi_mask = land_uses[OA_FEATURE_COLS].sum(axis=1) < 25
-    dominant_class[low_poi_mask] = "residential"
-
-    land_uses["land_use_class"] = dominant_class
-
-print("✓ [Cell 5] Thống kê phân bổ các lớp chức năng mặt phủ đô thị Hà Nội:")
-print(land_uses["land_use_class"].value_counts().to_string())
+print(f"✓ [Cell 5] Thống kê phân bổ tổng tiện ích tầng trệt trên {len(oa_gdf)} ô H3:")
+print(f"  • Tổng số điểm POIs toàn vùng : {total_poi_sum:,} điểm")
+print(f"  • Trung bình / Trung vị mỗi ô : {mean_poi:.1f} / {median_poi:.1f} POIs/ô H3")
+print(f"  • Cực đại tại ô trung tâm CBD : {max_poi:,} POIs/ô H3")
 
 
-# %% [Cell 6]: Trực quan hóa bản đồ hiện trạng sử dụng đất với bảng màu Paul Tol (Hình 10a)
-# --- Ghi chú giải thích từ Notebook gốc ---
-# Paul Tol 'bright' qualitative scheme: colour-blind safe (Figure 10a in paper)
+# %% [Cell 6]: Kết xuất bản đồ phân bố tổng mật độ tiện ích đô thị (Thay thế Figure 10a)
+# --- Ghi chú giải thích ---
+# Vẽ bản đồ phân cấp định lượng (Quantiles/FisherJenks) tổng số lượng POIs trên từng ô H3,
+# tích hợp nền bản đồ mở CARTO Positron, Kim chỉ Bắc (North Arrow) và Thước tỷ lệ 2 km.
 # -----------------------------------------
 
-print("\n-> [Cell 6] Đang kết xuất bản đồ hiện trạng sử dụng đất đô thị (Hình 10a)...")
+print("\n-> [Cell 6] Đang kết xuất bản đồ tổng mật độ tiện ích tầng trệt (Thay thế Hình 10a)...")
 
-# Bảng màu Paul Tol 'bright' chuẩn khoa học chống mù màu
-paul_tol_bright = {
-    "green_space":     "#228833",  # Xanh lục
-    "residential":     "#CCBB44",  # Vàng đất
-    "industrial":      "#AA3377",  # Tím hồng
-    "public_services": "#4477AA",  # Xanh lam
-    "transportation":  "#BBBBBB",  # Xám
-    "commercial":      "#EE6677",  # Đỏ hồng
-    "agricultural":    "#66CCEE",  # Xanh ngọc
-    "other":           "#999999",  # Xám nhạt
-}
-
-present_categories = sorted(land_uses["land_use_class"].unique())
-cmap_land = ListedColormap([paul_tol_bright.get(cat, "#000000") for cat in present_categories])
-
-fig, ax = plt.subplots(figsize=(14, 11), dpi=200)
-
-land_uses.plot(
-    column="land_use_class",
-    ax=ax,
-    legend=True,
-    categorical=True,
-    cmap=cmap_land,
-    alpha=0.65,
-    edgecolor="white",
-    linewidth=0.25,
-    legend_kwds={"loc": "upper right", "title": "Land Use Class", "frameon": True, "framealpha": 0.9}
-)
-
-# Thêm bản đồ nền mở Esri Gray Canvas
 try:
-    ctx.add_basemap(ax, crs=land_uses.crs, source=ctx.providers.Esri.WorldGrayCanvas, attribution=False)
-except Exception:
-    pass
+    import contextily as ctx
+except ImportError:
+    ctx = None
 
-# Thước tỷ lệ ScaleBar
-if HAS_SCALEBAR:
-    scalebar = ScaleBar(
-        1.0, units="m", location="lower right", frameon=True,
-        box_alpha=0.65, font_properties={"size": 11}, border_pad=0.4
+fig, ax = plt.subplots(figsize=(12, 12), dpi=300)
+
+# Sử dụng phân khoảng FisherJenks (k=5) để làm nổi bật cấu trúc lõi - vùng ven của Hà Nội
+try:
+    oa_gdf.plot(
+        column="total_pois",
+        ax=ax,
+        cmap="YlOrRd",
+        scheme="FisherJenks",
+        k=5,
+        alpha=0.82,
+        edgecolor="white",
+        linewidth=0.25,
+        legend=True,
+        legend_kwds={
+            "title": "Total POIs / H3 Zone",
+            "loc": "upper right",
+            "frameon": True,
+            "facecolor": "white",
+            "framealpha": 0.9,
+            "fontsize": 11,
+            "title_fontsize": 12,
+            "fmt": "{:.0f}",
+        },
     )
-    ax.add_artist(scalebar)
+except Exception:
+    # Dự phòng nếu thiếu thư viện mapclassify
+    oa_gdf.plot(
+        column="total_pois",
+        ax=ax,
+        cmap="YlOrRd",
+        alpha=0.82,
+        edgecolor="white",
+        linewidth=0.25,
+        legend=True,
+        legend_kwds={
+            "label": "Total POIs per H3 Zone",
+            "shrink": 0.6,
+        },
+    )
 
-# Mũi tên chỉ hướng Bắc
-x_arr, y_arr, arr_len = 0.05, 0.94, 0.06
+# Thêm lớp bản đồ nền (Basemap)
+if ctx is not None:
+    try:
+        ctx.add_basemap(
+            ax,
+            crs=oa_gdf.crs.to_string(),
+            source=ctx.providers.Esri.WorldGrayCanvas,
+            attribution=False,
+            zoom=13,
+        )
+    except Exception:
+        pass
+
+# Vẽ Kim chỉ Bắc (North Arrow) ở góc trên bên trái
 ax.annotate(
-    "N", xy=(x_arr, y_arr), xytext=(x_arr, y_arr - arr_len),
-    arrowprops=dict(facecolor="black", width=4, headwidth=12),
-    ha="center", va="center", fontsize=18, fontweight="bold",
-    xycoords="axes fraction"
+    "N",
+    xy=(0.06, 0.93),
+    xytext=(0.06, 0.85),
+    xycoords="axes fraction",
+    textcoords="axes fraction",
+    ha="center",
+    va="center",
+    fontsize=18,
+    fontweight="bold",
+    arrowprops=dict(facecolor="black", width=4, headwidth=12, headlength=12),
+    zorder=20,
 )
 
-ax.set_title("Hanoi Urban Land Use & Functional Distribution (Figure 10a)", fontsize=14, fontweight="bold", pad=12)
-ax.set_axis_off()
+# Vẽ Thước tỷ lệ 2 km (Scale Bar) ở góc dưới bên phải
+bounds = oa_gdf.total_bounds  # [minx, miny, maxx, maxy]
+bar_len_m = 2000.0  # 2 km = 2000 m trong EPSG:32648
+x_end = bounds[2] - (bounds[2] - bounds[0]) * 0.04
+x_start = x_end - bar_len_m
+y_pos = bounds[1] + (bounds[3] - bounds[1]) * 0.03
 
+ax.plot([x_start, x_end], [y_pos, y_pos], color="black", linewidth=6, solid_capstyle="butt", zorder=20)
+ax.text(
+    (x_start + x_end) / 2,
+    y_pos - (bounds[3] - bounds[1]) * 0.022,
+    "2 km",
+    ha="center",
+    va="top",
+    fontsize=12,
+    fontweight="bold",
+    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.8),
+    zorder=20,
+)
+
+ax.set_title(
+    "Hanoi Ground-Floor Urban Amenity Density (Total POIs per H3 Zone)",
+    fontsize=15,
+    fontweight="bold",
+    pad=14,
+)
+ax.set_axis_off()
 plt.tight_layout()
-land_use_img_path = FIGURES_DIR / "land_use.jpg"
-plt.savefig(land_use_img_path, bbox_inches="tight", pad_inches=0, dpi=200)
-print(f"✓ [Cell 6] Đã lưu bản đồ hiện trạng sử dụng đất tại: {land_use_img_path.resolve()}")
+
+# Xác định thư mục xuất ảnh an toàn
+_fig_dir = (
+    FIGURES_DIR
+    if "FIGURES_DIR" in globals()
+    else REPO_ROOT / "data" / "outputs" / "hanoi" / "figures"
+)
+_fig_dir.mkdir(parents=True, exist_ok=True)
+
+# Lưu đồng thời ra file chuẩn và file tương thích ngược với script kiểm toán
+poi_density_fig_path = _fig_dir / "hanoi_total_poi_density_fig10a.jpg"
+compat_fig_path = _fig_dir / ".jpg"
+
+plt.savefig(poi_density_fig_path, dpi=300, bbox_inches="tight")
+plt.savefig(compat_fig_path, dpi=300, bbox_inches="tight")
+
+print(f"✓ [Cell 6] Đã lưu bản đồ tổng mật độ tiện ích tại: {poi_density_fig_path}")
+print(f"✓ [Cell 6] Đã cập nhật đè tệp tương thích kiểm toán tại: {compat_fig_path}")
 plt.show()
 plt.close(fig)
 

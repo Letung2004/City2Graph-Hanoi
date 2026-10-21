@@ -143,7 +143,7 @@ def load_config(config_path: Path | str) -> dict:
     return cfg
 
 config_candidates = [
-    REPO_ROOT / "configs" / "experiment_config.yaml",
+    REPO_ROOT / "config" / "experiment_config.yaml",
     REPO_ROOT / "experiment_config.yaml",
     CWD / "experiment_config.yaml"
 ]

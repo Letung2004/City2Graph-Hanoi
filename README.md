@@ -69,12 +69,74 @@ pip install -r requirements.txt
 
 ### Lựa chọn 3: Cài đặt trực tiếp qua Pip / Google Colab
 
-Nếu đang đứng sẵn trong môi trường Python đích hoặc chạy trên Google Colab:
+Phương án này dành cho người dùng đang đứng sẵn trong môi trường Python đích hoặc muốn thực thi trực tuyến trên nền tảng đám mây **Google Colab** mà không cần cài đặt phần mềm trên máy cá nhân.
+
+#### 3.1. Cài đặt trực tiếp bằng `pip` trên máy cục bộ
+
+Nếu máy tính đã có sẵn môi trường Python tương thích (Python $\ge 3.10$), mở Terminal/PowerShell tại thư mục gốc `City2Graph-Hanoi` và chạy:
 
 ```bash
-# Cài đặt toàn bộ danh mục thư viện phụ thuộc
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+#### 3.2. Thiết lập và chạy trên Google Colab (Tải trực tiếp từ GitHub)
+
+Mở một sổ tay (Notebook) mới trên [Google Colab](https://colab.research.google.com/), tạo các ô mã (Code cells) và chạy tuần tự 3 bước sau:
+
+**Bước 1 — Sao chép kho lưu trữ từ GitHub và di chuyển vào thư mục gốc:**
+```python
+!git clone https://github.com/Letung2004/City2Graph-Hanoi.git
+%cd /content/City2Graph-Hanoi
+```
+
+**Bước 2 — Cài đặt các thư viện phụ thuộc:**
+*(Google Colab đã cài đặt sẵn PyTorch, NumPy, Pandas, Scikit-Learn và Matplotlib; lệnh dưới đây sẽ bổ sung PyTorch Geometric, H3, HDBSCAN và các thư viện GIS)*
+```python
+!pip install -q -r requirements.txt
+```
+
+**Bước 3 — Thực thi các Notebook thực nghiệm và hiển thị kết quả trực quan:**
+Sử dụng lệnh magic `%run` để thực thi từng pha và hiển thị trực tiếp biểu đồ/bản đồ ngay bên dưới ô lệnh:
+```python
+# Chạy tuần tự từng pha thực nghiệm
+%run notebooks/01_data_processing_hanoi.ipynb
+%run notebooks/02_graph_construction_hanoi.ipynb
+%run notebooks/03_model_training_hanoi.ipynb
+%run notebooks/04_evaluation_hanoi.ipynb
+%run notebooks/05_visualization_hanoi.ipynb
+%run notebooks/appendix_evaluation_hdbscan_hanoi.ipynb
+```
+
+#### 3.3. Thiết lập và chạy trên Google Colab (Từ thư mục đã tải lên Google Drive)
+
+Trong trường hợp bạn đã tải thư mục `City2Graph-Hanoi` lên Google Drive cá nhân (ví dụ tại đường dẫn `MyDrive/City2Graph-Hanoi`):
+
+* **Cách A — Mở trực tiếp từng tệp `.ipynb`:**
+  1. Truy cập Google Drive $\rightarrow$ vào thư mục `City2Graph-Hanoi/notebooks/`.
+  2. Nhấp đúp chuột vào tệp muốn chạy (ví dụ `04_evaluation_hanoi.ipynb`) và chọn **Open with Google Colaboratory**.
+  3. Chèn 1 ô lệnh ở đầu Notebook để kết nối Google Drive, định vị thư mục gốc và cài đặt thư viện:
+     ```python
+     from google.colab import drive
+     drive.mount('/content/drive')
+     %cd /content/drive/MyDrive/City2Graph-Hanoi
+     !pip install -q -r requirements.txt
+     ```
+  4. Chọn **Runtime $\rightarrow$ Run all** (hoặc nhấn `Ctrl + F9`) để chạy toàn bộ các cell.
+
+* **Cách B — Sao chép từ Google Drive sang ổ đĩa tốc độ cao của Colab:**
+  ```python
+  from google.colab import drive
+  drive.mount('/content/drive')
+
+  # Sao chép thư mục dự án sang bộ nhớ máy ảo Colab để tăng tốc độ đọc/ghi I/O
+  !cp -r "/content/drive/MyDrive/City2Graph-Hanoi" /content/City2Graph-Hanoi
+  %cd /content/City2Graph-Hanoi
+  !pip install -q -r requirements.txt
+
+  # Thực thi bất kỳ notebook nào và hiển thị đồ họa trực tiếp
+  %run notebooks/04_evaluation_hanoi.ipynb
+  ```
 
 ## 🚀 Quy Trình Thực Thi Thực Nghiệm (Pipeline)
 
