@@ -15,6 +15,7 @@ project:
 seeds:
   global: 42
   model: 42 # Khóa đọc bởi 03_model_training_hanoi.py
+  clustering: 42 # Khóa đọc bởi 04_evaluation_hanoi.py (đồng bộ Sato et al. 2026)
   torch: 42
   numpy: 42
   tsne: 42
@@ -101,6 +102,7 @@ model:
   out_dim: 32 # Khóa đọc bởi 03_model_training_hanoi.py
   embedding_dim: 32 # Kích thước vector nhúng tiềm ẩn Z (d = 32)
   dropout: 0.6 # Tỷ lệ dropout chuẩn hóa GAT/HAN
+  lambda_struct: 1.0 # Trọng số hàm mất mát cấu trúc (Equation 14, Sato et al. 2026)
 
   # Cấu hình hàm mất mát liên hợp (Joint Reconstruction Loss)
   loss:
@@ -116,6 +118,8 @@ training:
   epochs: 200 # Số epochs tối đa
   lr: 0.005 # Tốc độ học chuẩn Sato et al. (CEUS 2026)
   weight_decay: 0.0001 # Trọng số suy giảm L2 regularization
+  early_stopping_patience: 100 # Ngưỡng dừng sớm đồng bộ code CEUS 2026
+  neg_sampling_ratio: 1.0 # Tỷ lệ lấy mẫu cạnh âm DistMult decoder
   early_stopping:
     enabled: true
     patience: 100 # Ngắt sớm nếu loss không giảm sau 100 epochs

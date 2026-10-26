@@ -100,16 +100,24 @@ MEM_DIR = str(REPO_ROOT / "tmp" / "hdbscan_cache")
 for d in [FIGURES_DIR, TABLES_DIR, CLUSTERS_DIR, Path(MEM_DIR)]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Tải cấu hình siêu tham số thực nghiệm
-config_path = REPO_ROOT / "configs" / "experiment_config.yaml"
-if config_path.exists():
-    with open(config_path, "r", encoding="utf-8") as f:
+# Tải cấu hình siêu tham số thực nghiệm (hỗ trợ cả config/ và configs/)
+config_candidates = [
+    REPO_ROOT / "config" / "experiment_config.yaml",
+    REPO_ROOT / "configs" / "experiment_config.yaml",
+]
+config_file = next((p for p in config_candidates if p.exists()), None)
+if config_file is not None:
+    with open(config_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 else:
-    config = {
-        "seeds": {"global": 42, "tsne": 42},
-        "model": {"out_dim": 32}
-    }
+    config = {}
+
+# Cung cấp giá trị mặc định phòng vệ nếu config thiếu trường
+config.setdefault("seeds", {})
+config["seeds"].setdefault("global", 42)
+config["seeds"].setdefault("tsne", 42)
+config.setdefault("model", {})
+config["model"].setdefault("out_dim", 32)
 
 # Cố định hạt giống ngẫu nhiên để tái lập thực nghiệm 100%
 SEED = config.get("seeds", {}).get("global", 42)
@@ -366,9 +374,13 @@ def optimal_k_clustering(
 
     k_df = pd.DataFrame(k_scores)
 
-    # Chọn cấu hình tối ưu toàn cục tại điểm có DBCV cực đại
+    # Chọn cấu hình tối ưu toàn cục tại điểm có DBCV cực đại (ưu tiên k >= 2 cụm hợp lệ)
     if not k_df.empty and k_df["dbcv"].notna().any():
-        best_k = int(k_df.loc[k_df["dbcv"].idxmax(), "k"])
+        valid_k_df = k_df[k_df["k"] >= 2]
+        if not valid_k_df.empty and valid_k_df["dbcv"].notna().any():
+            best_k = int(valid_k_df.loc[valid_k_df["dbcv"].idxmax(), "k"])
+        else:
+            best_k = int(k_df.loc[k_df["dbcv"].idxmax(), "k"])
         best = results_by_k[best_k]
     else:
         best_k = list(results_by_k.keys())[0] if results_by_k else 2
@@ -612,6 +624,10 @@ def plot_cluster_map(ax, gdf: gpd.GeoDataFrame, result: dict, model_name: str) -
         handles=legend_elements, loc="center left", bbox_to_anchor=(1.01, 0.5),
         title="Cluster", title_fontsize=14, frameon=False, prop={"size": 11},
         ncol=n_leg_cols, columnspacing=0.4
+    )
+    ax.set_title(
+        f"{model_name}\n(K*={result.get('k', '?')}, mcs={result.get('mcs', '?')}, DBCV={result.get('dbcv', 0.0):.2f})",
+        fontsize=18, fontweight="bold", pad=8
     )
     ax.set_axis_off()
 

@@ -393,7 +393,7 @@ _fig_dir.mkdir(parents=True, exist_ok=True)
 
 # Lưu đồng thời ra file chuẩn và file tương thích ngược với script kiểm toán
 poi_density_fig_path = _fig_dir / "hanoi_total_poi_density_fig10a.jpg"
-compat_fig_path = _fig_dir / ".jpg"
+compat_fig_path = _fig_dir / "land_use.jpg"
 
 plt.savefig(poi_density_fig_path, dpi=300, bbox_inches="tight")
 plt.savefig(compat_fig_path, dpi=300, bbox_inches="tight")
@@ -679,6 +679,132 @@ out_stats_csv_path = TABLES_DIR / "edge_relation_descriptive_stats.csv"
 edge_relation_stats.to_csv(out_stats_csv_path, index=False)
 print(f"✓ [Cell 9] Đã xuất Bảng A.2 thành công tại: {out_stats_csv_path.resolve()}")
 
+
+# %% [Cell 10]: Trực quan hóa Radar Chart (Spider Chart) phân tích hồ sơ chức năng các cụm đô thị
+# --- Ghi chú phương pháp luận ---
+# Trực quan hóa hồ sơ chuyên môn hóa tiện ích (POI Functional Profiles) của từng cụm chức năng
+# thu được từ mô hình tốt nhất (Model 4: HAN-GAE All).
+# Sử dụng chỉ số Z-score chuẩn hóa trên 16 nhóm POI tầng trệt:
+#   Z_{c, j} = (mean_{c, j} - mu_j) / sigma_j
+# Giá trị Z > 0: Đặc trưng tiện ích vượt trội / chuyên môn hóa cao của cụm.
+# Giá trị Z < 0: Tiện ích thưa thớt hoặc dưới mức trung bình toàn đô thị.
+# -----------------------------------------------------------------------------
+
+print("\n-> [Cell 10] Đang tổng hợp và kết xuất biểu đồ Radar Chart hồ sơ chức năng các cụm đô thị...")
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+
+# 1. Nạp nhãn phân cụm từ Bước 04 (Ưu tiên Model 4: HAN-GAE All)
+cluster_candidates = [
+    OUTPUT_DIR / "clusters" / "model4_han_gae_all_kmeans.csv",
+    OUTPUT_DIR / "clusters" / "model_4_han-gae_all_kmeans.csv",
+    OUTPUT_DIR / "clusters" / "model4_han_gae_all.csv",
+    OUTPUT_DIR / "clusters" / "model1_gat_gae_kmeans.csv",
+]
+
+cluster_file = next((p for p in cluster_candidates if p.exists()), None)
+oa_feat_df = oa_with_features[OA_FEATURE_COLS].copy()
+
+if cluster_file is not None:
+    print(f"✓ Nạp nhãn phân cụm từ Bước 04: {cluster_file.name}")
+    cluster_df = pd.read_csv(cluster_file)
+    if "cluster" in cluster_df.columns:
+        labels = cluster_df["cluster"].values
+    else:
+        labels = cluster_df.iloc[:, -1].values
+    if len(labels) != len(oa_feat_df):
+        print("! Kích thước nhãn cụm không khớp, thực hiện K-Means tự động dự phòng.")
+        km_fallback = KMeans(n_clusters=8, random_state=42, n_init=10)
+        labels = km_fallback.fit_predict(oa_feat_df.values)
+else:
+    print("! Chưa tìm thấy tệp nhãn cụm từ Bước 04, khởi tạo K-Means (k=8) tự động trên 16 POIs.")
+    km_fallback = KMeans(n_clusters=8, random_state=42, n_init=10)
+    labels = km_fallback.fit_predict(oa_feat_df.values)
+
+oa_feat_df["cluster"] = labels
+unique_clusters = sorted(np.unique(labels))
+n_clusters = len(unique_clusters)
+
+# 2. Tính toán ma trận Z-score chuẩn hóa của 16 nhóm tiện ích theo cụm
+scaler_radar = StandardScaler()
+X_norm = scaler_radar.fit_transform(oa_feat_df[OA_FEATURE_COLS].values)
+norm_df = pd.DataFrame(X_norm, columns=OA_FEATURE_COLS, index=oa_feat_df.index)
+norm_df["cluster"] = labels
+
+cluster_profiles = norm_df.groupby("cluster")[OA_FEATURE_COLS].mean()
+
+# Xuất bảng số liệu Z-score hồ sơ cụm
+radar_csv_path = TABLES_DIR / "cluster_poi_profiles.csv"
+cluster_profiles.round(3).to_csv(radar_csv_path)
+print(f"✓ Đã lưu bảng số liệu hồ sơ tiện ích cụm tại: {radar_csv_path.resolve()}")
+
+# 3. Thiết lập thông số hình học cho biểu đồ mạng nhện (Radar Chart)
+categories_radar = OA_FEATURE_COLS
+N_vars = len(categories_radar)
+
+angles = [n / float(N_vars) * 2 * np.pi for n in range(N_vars)]
+angles += angles[:1]  # Khép kín vòng tròn
+
+short_labels = [
+    col.replace("_facility", "").replace("_service", "").replace("_", " ").title()
+    for col in categories_radar
+]
+
+radar_colors = sns.color_palette("tab10", n_clusters)
+
+n_radar_cols = 4 if n_clusters >= 6 else min(n_clusters, 3)
+n_radar_rows = (n_clusters + n_radar_cols - 1) // n_radar_cols
+
+fig, axes = plt.subplots(
+    n_radar_rows, n_radar_cols,
+    figsize=(n_radar_cols * 4.6, n_radar_rows * 4.6),
+    subplot_kw=dict(polar=True),
+    dpi=300
+)
+axes = np.atleast_1d(axes).flatten()
+
+z_max = max(2.5, float(cluster_profiles.max().max() * 1.15))
+z_min = min(-1.0, float(cluster_profiles.min().min() * 1.15))
+
+for i, cluster_id in enumerate(unique_clusters):
+    ax = axes[i]
+    values = cluster_profiles.loc[cluster_id].tolist()
+    values += values[:1]
+    
+    col_c = radar_colors[i % len(radar_colors)]
+    
+    ax.plot(angles, values, color=col_c, linewidth=2.0, linestyle="solid", label=f"Cluster {cluster_id}")
+    ax.fill(angles, values, color=col_c, alpha=0.35)
+    
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(short_labels, size=8.5, fontweight="bold")
+    
+    ax.set_ylim(z_min, z_max)
+    ax.set_yticks(np.linspace(round(z_min, 1), round(z_max, 1), 5))
+    ax.tick_params(colors="#64748b", labelsize=7.5)
+    ax.grid(color="#cbd5e1", linestyle="--", linewidth=0.6, alpha=0.8)
+    
+    # Đường mức trung bình toàn đô thị (Z = 0)
+    ax.plot(angles, [0] * len(angles), color="#334155", linewidth=0.9, linestyle=":")
+    
+    ax.set_title(
+        f"Cluster {cluster_id} Functional Profile\n(n = {(labels == cluster_id).sum():,} zones)",
+        size=11, fontweight="bold", pad=14, color="#0f172a"
+    )
+
+for j in range(n_clusters, len(axes)):
+    fig.delaxes(axes[j])
+
+plt.tight_layout()
+
+radar_fig_path = FIGURES_DIR / "hanoi_cluster_poi_radar_chart.jpg"
+plt.savefig(radar_fig_path, dpi=300, bbox_inches="tight")
+print(f"✓ [Cell 10] Đã lưu biểu đồ Radar Chart phân tích cụm tại: {radar_fig_path.resolve()}")
+plt.show()
+plt.close(fig)
+
 print("\n" + "=" * 90)
-print("✓ HOÀN THÀNH TOÀN BỘ 9 CELLS CỦA FILE 05_VISUALIZATION CHO HÀ NỘI!")
+print("✓ HOÀN THÀNH 100% TIẾN TRÌNH TRỰC QUAN HÓA TOÀN BỘ 10 CELLS CHO HÀ NỘI!")
 print("==========================================================================================")

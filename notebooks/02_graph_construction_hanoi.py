@@ -272,6 +272,7 @@ contig_edges = gpd.GeoDataFrame(records, crs=TARGET_CRS)
 contig_nodes = oa_with_features.copy()
 contig_nodes["geometry"] = contig_nodes["pop_weighted_centroid"]
 
+# Chuẩn hóa trích xuất u, v và bảo đảm đúng 5.550 cạnh có hướng đối xứng
 u_ct_raw, v_ct_raw = extract_edge_uv(contig_edges)
 if len(contig_edges) == 2775:
     rev_edges = contig_edges.copy()
@@ -282,7 +283,7 @@ if len(contig_edges) == 2775:
             if c1 in rev_edges.columns and c2 in rev_edges.columns:
                 rev_edges[c1], rev_edges[c2] = contig_edges[c2], contig_edges[c1]
                 break
-    contig_edges = pd.concat([contig_edges, rev_edges])
+    contig_edges = pd.concat([contig_edges, rev_edges]).reset_index(drop=True)
     contig_edges = gpd.GeoDataFrame(contig_edges, crs=TARGET_CRS)
 
 from torch_geometric.data import Data
@@ -291,11 +292,19 @@ x_tensor = torch.tensor(oa_with_features[OA_FEATURE_COLS].to_numpy(dtype=np.floa
 node_to_idx = {str(zid): idx for idx, zid in enumerate(oa_with_features.index)}
 
 u_c, v_c = extract_edge_uv(contig_edges)
-u_indices = [node_to_idx[str(u)] for u in u_c if str(u) in node_to_idx]
-v_indices = [node_to_idx[str(v)] for v in v_c if str(v) in node_to_idx]
+w_c = contig_edges["travel_time_sec"].to_numpy(dtype=np.float32)
+
+# Lọc đồng bộ theo cặp (u, v) và trọng số thời gian di chuyển tau bảo đảm an toàn chiều tensor
+valid_pairs = [
+    (node_to_idx[str(u)], node_to_idx[str(v)], float(t))
+    for u, v, t in zip(u_c, v_c, w_c)
+    if str(u) in node_to_idx and str(v) in node_to_idx
+]
+
+u_indices, v_indices, t_values = zip(*valid_pairs)
 
 edge_index_tensor = torch.tensor([u_indices, v_indices], dtype=torch.long)
-edge_attr_tensor = torch.tensor(contig_edges["travel_time_sec"].to_numpy(dtype=np.float32), dtype=torch.float32).unsqueeze(1)
+edge_attr_tensor = torch.tensor(t_values, dtype=torch.float32).unsqueeze(1)
 
 homo_data = Data(x=x_tensor, edge_index=edge_index_tensor, edge_attr=edge_attr_tensor)
 
@@ -590,25 +599,36 @@ hetero_walk = HeteroData()
 
 x_oa = torch.tensor(oa_with_features[OA_FEATURE_COLS].to_numpy(dtype=np.float32), dtype=torch.float32)
 hetero_walk["oa"].x = x_oa
+hetero_walk["street_connector"].num_nodes = len(street_nodes)
 
 oa_idx_map = {str(z): i for i, z in enumerate(contig_nodes.index)}
 st_idx_map = {str(z): i for i, z in enumerate(street_nodes.index)}
 
 df_c = hetero_edges_walk[("oa", "contig", "oa")]
 u_c, v_c = extract_edge_uv(df_c)
-u_c_idx = [oa_idx_map[str(u)] for u in u_c if str(u) in oa_idx_map]
-v_c_idx = [oa_idx_map[str(v)] for v in v_c if str(v) in oa_idx_map]
-hetero_walk[("oa", "contig", "oa")].edge_index = torch.tensor([u_c_idx, v_c_idx], dtype=torch.long)
-t_c = df_c["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_c.columns else df_c["weight"].to_numpy(dtype=np.float32)
-hetero_walk[("oa", "contig", "oa")].edge_attr = torch.tensor(t_c, dtype=torch.float32).unsqueeze(1)
+w_c = df_c["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_c.columns else df_c["weight"].to_numpy(dtype=np.float32)
+valid_c = [
+    (oa_idx_map[str(u)], oa_idx_map[str(v)], float(t))
+    for u, v, t in zip(u_c, v_c, w_c)
+    if str(u) in oa_idx_map and str(v) in oa_idx_map
+]
+if valid_c:
+    u_c_idx, v_c_idx, t_c = zip(*valid_c)
+    hetero_walk[("oa", "contig", "oa")].edge_index = torch.tensor([u_c_idx, v_c_idx], dtype=torch.long)
+    hetero_walk[("oa", "contig", "oa")].edge_attr = torch.tensor(t_c, dtype=torch.float32).unsqueeze(1)
 
 df_w = hetero_edges_walk[("oa", "15_min_walk", "oa")]
 u_w, v_w = extract_edge_uv(df_w)
-u_w_idx = [oa_idx_map[str(u)] for u in u_w if str(u) in oa_idx_map]
-v_w_idx = [oa_idx_map[str(v)] for v in v_w if str(v) in oa_idx_map]
-hetero_walk[("oa", "15_min_walk", "oa")].edge_index = torch.tensor([u_w_idx, v_w_idx], dtype=torch.long)
-t_w = df_w["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_w.columns else df_w["weight"].to_numpy(dtype=np.float32)
-hetero_walk[("oa", "15_min_walk", "oa")].edge_attr = torch.tensor(t_w, dtype=torch.float32).unsqueeze(1)
+w_w = df_w["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_w.columns else df_w["weight"].to_numpy(dtype=np.float32)
+valid_w = [
+    (oa_idx_map[str(u)], oa_idx_map[str(v)], float(t))
+    for u, v, t in zip(u_w, v_w, w_w)
+    if str(u) in oa_idx_map and str(v) in oa_idx_map
+]
+if valid_w:
+    u_w_idx, v_w_idx, t_w = zip(*valid_w)
+    hetero_walk[("oa", "15_min_walk", "oa")].edge_index = torch.tensor([u_w_idx, v_w_idx], dtype=torch.long)
+    hetero_walk[("oa", "15_min_walk", "oa")].edge_attr = torch.tensor(t_w, dtype=torch.float32).unsqueeze(1)
 
 df_st = hetero_edges_walk[("street_connector", "is_connected_to", "street_connector")]
 u_st, v_st = extract_edge_uv(df_st)
@@ -830,13 +850,17 @@ for src_oa in oa_nodes_list:
                     if (src_oa, dst_oa) not in walk_pairs and (dst_oa, src_oa) not in walk_pairs:
                         transit_only_records.append(rec)
 
-# Dự phòng an toàn đảm bảo luôn thu thập các liên kết xe buýt cự ly xa
+# Dự phòng an toàn: Bổ sung liên kết cự ly xa nếu mạng lưới giao thông công cộng thưa thớt
 if len(transit_only_records) < 500:
+    existing_transit_pairs = {(r["from_id"], r["to_id"]) for r in transit_only_records}
     for rec in multi_records:
-        p1 = oa_centroids_dict[rec["from_id"]]
-        p2 = oa_centroids_dict[rec["to_id"]]
-        if p1.distance(p2) > 1000.0:  # Vượt cự ly đi bộ 15 phút
-            transit_only_records.append(rec)
+        pair = (rec["from_id"], rec["to_id"])
+        if pair not in existing_transit_pairs:
+            p1 = oa_centroids_dict[rec["from_id"]]
+            p2 = oa_centroids_dict[rec["to_id"]]
+            if p1.distance(p2) > 1000.0:  # Vượt cự ly đi bộ 15 phút
+                transit_only_records.append(rec)
+                existing_transit_pairs.add(pair)
 
 # Khởi tạo GeoDataFrame an toàn tuyệt đối, gán edge_key cố định, không dùng groupby
 if len(transit_only_records) > 0:
@@ -1035,29 +1059,53 @@ from torch_geometric.data import HeteroData
 
 hetero_multi = HeteroData()
 
-# 1. Thuộc tính nút 'oa' (985 ô H3 x 16 nhóm POIs)
+# 1. Thuộc tính nút 'oa' (985 ô H3 x 16 nhóm POIs) và số lượng đỉnh cho các tầng giao thông
 hetero_multi["oa"].x = torch.tensor(oa_with_features[OA_FEATURE_COLS].to_numpy(dtype=np.float32), dtype=torch.float32)
+hetero_multi["street_connector"].num_nodes = len(street_nodes)
+hetero_multi["bus_station"].num_nodes = len(travel_summary_nodes)
 
-# 2. Định danh số nguyên đỉnh
-oa_idx_map = {str(z): i for i, z in enumerate(contig_nodes.index)}
+# 2. Định danh số nguyên đỉnh cho từng loại nút
+node_maps = {
+    "oa": {str(z): i for i, z in enumerate(contig_nodes.index)},
+    "street_connector": {str(z): i for i, z in enumerate(street_nodes.index)},
+    "bus_station": {str(z): i for i, z in enumerate(travel_summary_nodes.index)},
+}
 
-# 3. Gán đúng 3 quan hệ cốt lõi phục vụ huấn luyện Model 3 & 4
-core_train_rels = [
+# 3. Lưu trữ đầy đủ các quan hệ (khớp 1:1 với cấu trúc tác giả gốc Sato et al., CEUS 2026)
+all_export_rels = [
+    # 3 quan hệ metapaths cốt lõi phục vụ huấn luyện Model 3 & 4
     ("oa", "contig", "oa"),
     ("oa", "15_min_walk", "oa"),
     ("oa", "15_min_multi", "oa"),
+    # Các quan hệ thành phần phục vụ diễn giải và kiểm tra đồ thị dị thể
+    ("street_connector", "is_connected_to", "street_connector"),
+    ("bus_station", "is_next_to", "bus_station"),
+    ("bus_station", "connects", "oa"),
+    ("oa", "is_nearby", "street_connector"),
+    ("bus_station", "is_nearby", "street_connector"),
 ]
 
-for rel in core_train_rels:
+for rel in all_export_rels:
     if rel in hetero_edges_multi:
         df_rel = hetero_edges_multi[rel]
-        u_r, v_r = extract_edge_uv(df_rel)
-        u_idx = [oa_idx_map[str(u)] for u in u_r if str(u) in oa_idx_map]
-        v_idx = [oa_idx_map[str(v)] for v in v_r if str(v) in oa_idx_map]
-        hetero_multi[rel].edge_index = torch.tensor([u_idx, v_idx], dtype=torch.long)
-        t_r = df_rel["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_rel.columns else df_rel["weight"].to_numpy(dtype=np.float32)
-        hetero_multi[rel].edge_attr = torch.tensor(t_r, dtype=torch.float32).unsqueeze(1)
+        src_type, _, dst_type = rel
+        src_map = node_maps[src_type]
+        dst_map = node_maps[dst_type]
         
+        u_r, v_r = extract_edge_uv(df_rel)
+        w_r = df_rel["travel_time_sec"].to_numpy(dtype=np.float32) if "travel_time_sec" in df_rel.columns else df_rel["weight"].to_numpy(dtype=np.float32)
+        
+        valid_triplets = [
+            (src_map[str(u)], dst_map[str(v)], float(t))
+            for u, v, t in zip(u_r, v_r, w_r)
+            if str(u) in src_map and str(v) in dst_map
+        ]
+        
+        if valid_triplets:
+            u_idx, v_idx, t_val = zip(*valid_triplets)
+            hetero_multi[rel].edge_index = torch.tensor([u_idx, v_idx], dtype=torch.long)
+            hetero_multi[rel].edge_attr = torch.tensor(t_val, dtype=torch.float32).unsqueeze(1)
+
 torch.save(hetero_multi, HETERO_MULTI_PATH)
 
 print("=" * 85)

@@ -97,57 +97,67 @@ print(f"✓ [Cell 2] Thư mục lưu embeddings & checkpoints: {OUTPUT_DIR}")
 # -----------------------------------------
 
 def load_config(config_path: Path | str) -> dict:
-    """Tải cấu hình siêu tham số và tự động bổ sung fallback nếu thiếu khóa."""
+    """Tải cấu hình siêu tham số và tự động bổ sung fallback phòng vệ nếu thiếu khóa."""
     path_obj = Path(config_path)
-    if not path_obj.exists():
+    cfg = None
+    if path_obj.exists():
+        with open(path_obj, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+    else:
         fallback_cfg = REPO_ROOT / "configs" / "experiment_config.yaml"
         if fallback_cfg.exists():
-            path_obj = fallback_cfg
-        else:
-            print(f"! Không tìm thấy {config_path}, áp dụng cấu hình mặc định chuẩn CEUS 2026 cho Hà Nội.")
-            return {
-                "seeds": {"global": 42, "model": 42},
-                "experiment": {"device": "cuda" if torch.cuda.is_available() else "cpu"},
-                "model": {
-                    "in_dim": 16,        # Chuẩn hóa 16 nhóm POIs tầng trệt của Hà Nội
-                    "hidden_dim": 64,
-                    "out_dim": 32,       # Chiều vector nhúng tiềm ẩn z
-                    "heads": 4,
-                    "dropout": 0.6,
-                    "lambda_struct": 1.0
-                },
-                "training": {
-                    "lr": 0.005,
-                    "epochs": 200,
-                    "early_stopping_patience": 100,
-                    "neg_sampling_ratio": 1.0
-                },
-                "data": {
-                    "root": str(GRAPH_DIR),
-                    "homo": "homo.pt",
-                    "hetero_walk": "hetero_walk.pt",
-                    "hetero_multi": "hetero_multi.pt"
-                }
-            }
+            with open(fallback_cfg, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f)
 
-    with open(path_obj, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    if cfg is None:
+        print(f"! Không tìm thấy {config_path}, áp dụng cấu hình mặc định chuẩn CEUS 2026 cho Hà Nội.")
+        cfg = {}
 
-    if "data" not in cfg:
-        cfg["data"] = {}
+    # 1. Cấu hình hạt giống ngẫu nhiên (Seeds)
+    cfg.setdefault("seeds", {})
+    cfg["seeds"].setdefault("global", 42)
+    cfg["seeds"].setdefault("model", 42)
+
+    # 2. Cấu hình thiết bị thực thi (Device)
+    cfg.setdefault("experiment", {})
+    cfg["experiment"].setdefault("device", "cuda" if torch.cuda.is_available() else "cpu")
+
+    # 3. Cấu hình siêu tham số mô hình (Model architecture)
+    cfg.setdefault("model", {})
+    cfg["model"].setdefault("in_dim", 16)        # Chuẩn hóa 16 nhóm POIs tầng trệt của Hà Nội
+    cfg["model"].setdefault("hidden_dim", 64)
+    cfg["model"].setdefault("out_dim", 32)       # Chiều vector nhúng tiềm ẩn z
+    cfg["model"].setdefault("heads", 4)
+    cfg["model"].setdefault("dropout", 0.6)
+    cfg["model"].setdefault("lambda_struct", 1.0) # Trọng số hàm mất mát cấu trúc (Equation 14, Sato et al. 2026)
+
+    # 4. Cấu hình quy trình huấn luyện (Training)
+    cfg.setdefault("training", {})
+    cfg["training"].setdefault("lr", 0.005)
+    cfg["training"].setdefault("epochs", 200)
+    nested_patience = cfg["training"].get("early_stopping", {}).get("patience", 100) if isinstance(cfg["training"].get("early_stopping"), dict) else 100
+    cfg["training"].setdefault("early_stopping_patience", nested_patience)
+    cfg["training"].setdefault("neg_sampling_ratio", 1.0)
+    cfg["training"].setdefault("weight_decay", 1e-4)
+
+    # 5. Cấu hình dữ liệu đồ thị (Data)
+    cfg.setdefault("data", {})
     cfg["data"]["root"] = str(GRAPH_DIR)
     cfg["data"]["homo"] = "homo.pt"
     cfg["data"]["hetero_walk"] = "hetero_walk.pt"
     cfg["data"]["hetero_multi"] = "hetero_multi.pt"
-    cfg["model"]["in_dim"] = 16  # Chuẩn hóa 16 đặc trưng POIs Hà Nội
+
     return cfg
 
 config_candidates = [
     REPO_ROOT / "config" / "experiment_config.yaml",
+    REPO_ROOT / "configs" / "experiment_config.yaml",
     REPO_ROOT / "experiment_config.yaml",
+    CWD / "config" / "experiment_config.yaml",
+    CWD / "configs" / "experiment_config.yaml",
     CWD / "experiment_config.yaml"
 ]
-chosen_cfg_path = next((p for p in config_candidates if p.exists()), REPO_ROOT / "configs" / "experiment_config.yaml")
+chosen_cfg_path = next((p for p in config_candidates if p.exists()), REPO_ROOT / "config" / "experiment_config.yaml")
 config = load_config(chosen_cfg_path)
 
 def configure_determinism(seed: int) -> None:
@@ -170,7 +180,7 @@ def configure_determinism(seed: int) -> None:
 global_seed = config["seeds"].get("global", 42)
 configure_determinism(global_seed)
 
-device_pref = config["experiment"].get("device", "cpu")
+device_pref = str(config["experiment"].get("device", "cpu")).lower()
 device = torch.device(device_pref if torch.cuda.is_available() and device_pref == "cuda" else "cpu")
 print(f"✓ Thiết bị tính toán được chỉ định: {device}")
 
@@ -211,9 +221,9 @@ def train_model(
     
     best_loss = float("inf")
     best_state_dict = copy.deepcopy(model.state_dict())
-    patience = config["training"]["early_stopping_patience"]
+    patience = config["training"].get("early_stopping_patience", 100)
     patience_counter = 0
-    epochs = config["training"]["epochs"] if epochs_override is None else epochs_override
+    epochs = config["training"].get("epochs", 200) if epochs_override is None else epochs_override
 
     checkpoint_path = None
     if save_artifacts:
@@ -230,8 +240,8 @@ def train_model(
         # Tính hàm mất mát liên hợp (Joint Loss) từ kiến trúc src.models
         loss, l_feat, l_struct = model.compute_loss(
             data,
-            lambda_struct=config["model"]["lambda_struct"],
-            neg_sampling_ratio=config["training"]["neg_sampling_ratio"]
+            lambda_struct=config["model"].get("lambda_struct", 1.0),
+            neg_sampling_ratio=config["training"].get("neg_sampling_ratio", 1.0)
         )
         loss.backward()
         optimizer.step()

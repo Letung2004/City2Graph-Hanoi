@@ -556,7 +556,8 @@ def classify_poi_row(row):
     if any(k in raw_text for k in ['factory', 'industrial', 'warehouse', 'construction']):
         return 'industrial_service'
 
-    return 'consumer_service'
+    # Khớp chuẩn tác giả: Các điểm không xác định hoặc không thuộc 16 nhóm sẽ gán nhãn 'other' (sẽ bị loại bỏ ở Cell 8)
+    return 'other'
 
 # Gán nhãn phân loại ngữ nghĩa cho từng điểm POI
 pois['functional_class'] = pois.apply(classify_poi_row, axis=1)
@@ -1019,13 +1020,18 @@ oa_to_save = oa_to_save.reset_index(drop=True)
 out_gpkg_path = OUTPUT_DIR / "oa_with_features.gpkg"
 oa_to_save.to_file(out_gpkg_path, driver="GPKG", index=False)
 
-# Xuất tệp GeoParquet / Parquet chuẩn hóa tương thích đa nền tảng
-out_parquet_path = OUTPUT_DIR / "hanoi_normalized_features.parquet"
+# Xuất tệp GeoParquet / Parquet lưu trữ dữ liệu đặc trưng thô (Raw Features) khớp với đầu vào Step 02
+out_parquet_path = OUTPUT_DIR / "hanoi_raw_features.parquet"
 oa_to_save.to_parquet(out_parquet_path)
 
+# Xuất tệp tương thích ngược (Backward-compatible) cho các module downstream
+out_parquet_legacy = OUTPUT_DIR / "hanoi_normalized_features.parquet"
+oa_to_save.to_parquet(out_parquet_legacy)
+
 print(f"✓ [Cell 19] Đã lưu trữ thành công các tệp đặc trưng nút:")
-print(f"  • GeoPackage: {out_gpkg_path.name} ({out_gpkg_path.stat().st_size / 1024:.1f} KB)")
-print(f"  • Parquet:    {out_parquet_path.name} ({out_parquet_path.stat().st_size / 1024:.1f} KB)")
+print(f"  • GeoPackage:   {out_gpkg_path.name} ({out_gpkg_path.stat().st_size / 1024:.1f} KB)")
+print(f"  • Raw Parquet:  {out_parquet_path.name} ({out_parquet_path.stat().st_size / 1024:.1f} KB)")
+print(f"  • Parquet (BC): {out_parquet_legacy.name} ({out_parquet_legacy.stat().st_size / 1024:.1f} KB)")
 
 
 
@@ -1396,12 +1402,16 @@ if not travel_graph_constructed:
         if u_id in node_coords and v_id in node_coords:
             p1, p2 = node_coords[u_id], node_coords[v_id]
             if not p1.equals(p2):
+                edge_geom = LineString([p1, p2])
+                # Tính thời gian chạy buýt động theo khoảng cách thực tế giữa 2 trạm và vận tốc buýt nội đô
+                # Vận tốc trung bình xe buýt nội đô Hà Nội: ~15 km/h = 4.17 m/s (chặn dưới 30 giây cho trạm rất gần)
+                dynamic_travel_time = max(30.0, edge_geom.length / 4.17)
                 edge_list.append({
                     'from_stop_id': u_id,
                     'to_stop_id': v_id,
                     'frequency': int(row['frequency']),
-                    'travel_time_sec': 128.7,  # Thời gian chạy buýt trung bình thực tế giữa 2 trạm
-                    'geometry': LineString([p1, p2])
+                    'travel_time_sec': round(dynamic_travel_time, 2),
+                    'geometry': edge_geom
                 })
 
     travel_edges = gpd.GeoDataFrame(edge_list, crs=TARGET_CRS)

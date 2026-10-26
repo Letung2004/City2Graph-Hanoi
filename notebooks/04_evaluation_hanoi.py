@@ -97,23 +97,40 @@ CLUSTERS_DIR = OUTPUTS_DIR / "clusters"
 for d in [FIGURES_DIR, TABLES_DIR, CLUSTERS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Tải cấu hình thực nghiệm
-config_path = REPO_ROOT / "configs" / "experiment_config.yaml"
-if config_path.exists():
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+# Tải cấu hình thực nghiệm đa đường dẫn (Multi-path Configuration Discovery)
+config_candidates = [
+    REPO_ROOT / "config" / "experiment_config.yaml",
+    REPO_ROOT / "configs" / "experiment_config.yaml",
+    REPO_ROOT / "experiment_config.yaml",
+    Path.cwd() / "config" / "experiment_config.yaml",
+    Path.cwd() / "configs" / "experiment_config.yaml",
+    Path.cwd() / "experiment_config.yaml"
+]
+chosen_cfg_path = next((p for p in config_candidates if p.exists()), None)
+if chosen_cfg_path is not None:
+    with open(chosen_cfg_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+    print(f"✓ [Cell 2] Nạp thành công tệp cấu hình thực nghiệm: {chosen_cfg_path.resolve()}")
 else:
-    # Cấu hình dự phòng chuẩn CEUS 2026 cho Hà Nội
-    config = {
-        "seeds": {"global": 42, "clustering": 42, "tsne": 42},
-        "model": {"in_dim": 16, "out_dim": 32},
-        "data": {
-            "root": str(GRAPHS_DIR),
-            "homo": "homo.pt",
-            "hetero_walk": "hetero_walk.pt",
-            "hetero_multi": "hetero_multi.pt"
-        }
-    }
+    print("! [Cell 2] Không tìm thấy experiment_config.yaml, áp dụng cấu hình dự phòng chuẩn CEUS 2026.")
+    config = {}
+
+# Thiết lập các giá trị mặc định phòng vệ an toàn (Defensive Defaults)
+config.setdefault("seeds", {})
+config["seeds"].setdefault("global", 42)
+config["seeds"].setdefault("clustering", config["seeds"].get("kmeans", 42))
+config["seeds"].setdefault("tsne", 42)
+config["seeds"].setdefault("model", 42)
+
+config.setdefault("model", {})
+config["model"].setdefault("in_dim", 16)
+config["model"].setdefault("out_dim", 32)
+
+config.setdefault("data", {})
+config["data"].setdefault("root", str(GRAPHS_DIR))
+config["data"].setdefault("homo", "homo.pt")
+config["data"].setdefault("hetero_walk", "hetero_walk.pt")
+config["data"].setdefault("hetero_multi", "hetero_multi.pt")
 
 # Cố định hạt giống ngẫu nhiên toàn cục
 global_seed = config.get("seeds", {}).get("global", 42)
@@ -419,10 +436,12 @@ def optimal_k_clustering(
         for node_id, cluster_id in zip(node_ids, labels):
             communities[cluster_id].add(node_id)
 
-        mods = {
-            rel: nx.community.modularity(G, communities)
-            for rel, G in graphs.items()
-        }
+        mods = {}
+        for rel, G in graphs.items():
+            try:
+                mods[rel] = nx.community.modularity(G, communities)
+            except Exception:
+                mods[rel] = np.nan
 
         k_scores.append({
             "k": k,
@@ -448,10 +467,12 @@ def optimal_k_clustering(
         for node_id, cluster_id in zip(node_ids, labels):
             communities[cluster_id].add(node_id)
 
-        mods = {
-            rel: nx.community.modularity(G, communities)
-            for rel, G in graphs.items()
-        }
+        mods = {}
+        for rel, G in graphs.items():
+            try:
+                mods[rel] = nx.community.modularity(G, communities)
+            except Exception:
+                mods[rel] = np.nan
 
         results.append({
             "labels": labels,
@@ -491,7 +512,7 @@ print("-> [Cell 4] BẮT ĐẦU QUY TRÌNH PHÂN CỤM K-MEANS ĐỐI SOÁT 9 M�
 print("=" * 90)
 
 clustering_results: dict[str, dict] = {}
-clustering_seed = config.get("seeds", {}).get("clustering", 42)
+clustering_seed = config.get("seeds", {}).get("clustering", config.get("seeds", {}).get("kmeans", 42))
 
 for model_name, gdf in model_gdfs.items():
     print(f"\n• Đang phân cụm mô hình: {model_name}...")
